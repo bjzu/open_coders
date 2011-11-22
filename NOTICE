@@ -34,13 +34,14 @@ This library uses following coder IDs:
 4               Simple 9
 5               Simple 16
 6               PForDelta
-7               OPTPForDelta
-8               VSEncodingBlocks
-9               VSE-R
-10              VSEncodingRest
-11              VSEncodingBlocksHybrid
-12              VSEncodingSimple v1
-13              VSEncodingSimple v2
+7               OPTPForDelta v1
+8               OPTPForDelta v2
+9               VSEncodingBlocks
+10              VSE-R
+11              VSEncodingRest
+12              VSEncodingBlocksHybrid
+13              VSEncodingSimple v1
+14              VSEncodingSimple v2
 
 ### DecoderID   DecoderName
 
@@ -56,13 +57,14 @@ This library uses following coder IDs:
 9               Simple 9
 10              Simple 16
 11              PForDelta
-12              OPTPForDelta
-13              VSEncodingBlocks
-14              VSE-R
-15              VSEncodingRest
-16              VSEncodingBlocksHybrid
-17              VSEncodingSimple v1
-18              VSEncodingSimple v2
+12              OPTPForDelta v1
+13              OPTPForDelta v2
+14              VSEncodingBlocks
+15              VSE-R
+16              VSEncodingRest
+17              VSEncodingBlocksHybrid
+18              VSEncodingSimple v1
+19              VSEncodingSimple v2
 
 An input/output file format
 -----------
@@ -99,7 +101,8 @@ Binary Interpolative             103.27         3.95
 Simple 9                         571.93         5.41
 Simple 16                        575.90         5.17
 PForDelta                        425.28         6.29
-OPTPForDelta                     331.06         5.78
+OPTPForDelta v1                  331.06         5.78
+OPTPForDelta v2
 VSEncodingBlocks                 915.36         4.95
 VSE-R                            167.21         4.55
 VSEncodingSimple v1             1701.11         6.40

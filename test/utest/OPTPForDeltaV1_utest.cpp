@@ -1,5 +1,5 @@
 /*-----------------------------------------------------------------------------
- *  OPTPForDelta_utest.cpp - A unit test for OPTPForDelta.
+ *  OPTPForDeltaV1_utest.cpp - A unit test for OPTPForDeltaV1.
  *
  *  Coding-Style:
  *      emacs) Mode: C, tab-width: 8, c-basic-offset: 8, indent-tabs-mode: nil
@@ -13,9 +13,9 @@
  */
 
 #include <gtest/gtest.h>
-#include "compress/OPTPForDelta.hpp"
+#include "compress/OPTPForDeltaV1.hpp"
 
-TEST(OPTPForDeltaTest, ValidationEncode1b) {
+TEST(OPTPForDeltaV1Test, ValidationEncode1b) {
         int             i;
         uint32_t        len;
         uint32_t        input[32];
@@ -25,11 +25,11 @@ TEST(OPTPForDeltaTest, ValidationEncode1b) {
         for (i = 0; i < 32; i++)
                 input[i] = 1;
 
-        OPTPForDelta::encodeArray(&input[0], 32U, &cdata[0], len);
+        OPTPForDeltaV1::encodeArray(&input[0], 32U, &cdata[0], len);
 
         EXPECT_EQ(3U, len);
 
-        OPTPForDelta::decodeArray(&cdata[0], 0U, &output[0], 32U);
+        OPTPForDeltaV1::decodeArray(&cdata[0], 0U, &output[0], 32U);
 
         for (i = 0; i < 32; i++)
                 EXPECT_EQ(1U, output[i]);

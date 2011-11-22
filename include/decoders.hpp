@@ -25,7 +25,8 @@
 #include "compress/Simple9.hpp"
 #include "compress/Simple16.hpp"
 #include "compress/PForDelta.hpp"
-#include "compress/OPTPForDelta.hpp"
+#include "compress/OPTPForDeltaV1.hpp"
+#include "compress/OPTPForDeltaV2.hpp"
 #include "compress/VSEncodingBlocks.hpp"
 #include "compress/VSE-R.hpp"
 #include "compress/VSEncodingRest.hpp"
@@ -33,7 +34,7 @@
 #include "compress/VSEncodingSimpleV1.hpp"
 #include "compress/VSEncodingSimpleV2.hpp"
 
-#define NUMDECODERS     19
+#define NUMDECODERS     20
 
 /* DecoderID */
 #define D_GAMMA         0
@@ -48,13 +49,14 @@
 #define D_SIMPLE9       9
 #define D_SIMPLE16      10
 #define D_P4D           11
-#define D_OPTP4D        12
-#define D_VSEBLOCKS     13
-#define D_VSER          14
-#define D_VSEREST       15
-#define D_VSEHYB        16
-#define D_VSESIMPLEV1   17
-#define D_VSESIMPLEV2   18
+#define D_OPTP4DV1      12
+#define D_OPTP4DV1      13
+#define D_VSEBLOCKS     14
+#define D_VSER          15
+#define D_VSEREST       16
+#define D_VSEHYB        17
+#define D_VSESIMPLEV1   18
+#define D_VSESIMPLEV2   19
 
 /* FIXME: A last argument should be removed */
 typedef void (*pt2Dec)(uint32_t *, uint32_t, uint32_t *, uint32_t);
@@ -72,7 +74,8 @@ static pt2Dec decoders[NUMDECODERS] = {
         Simple9::decodeArray,
         Simple16::decodeArray,
         PForDelta::decodeArray,
-        OPTPForDelta::decodeArray,
+        OPTPForDeltaV1::decodeArray,
+        OPTPForDeltaV2::decodeArray,
         VSEncodingBlocks::decodeArray,
         VSE_R::decodeArray,
         VSEncodingRest::decodeArray,
@@ -95,7 +98,8 @@ const char *dec_ext[] = {
         ".Simple9",
         ".Simple16",
         ".P4D",
-        ".OP4D",
+        ".OP4DV1",
+        ".OP4DV2",
         ".VSE",
         ".VSERT",
         ".VSERest",
