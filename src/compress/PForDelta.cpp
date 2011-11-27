@@ -177,8 +177,7 @@ PForDelta::encodeBlock(uint32_t *in, uint32_t len,
         BitsWriter      *wt;
 
         if (len > 0) {
-                /* FIXME: To be modified */
-                codewords = new uint32_t[MAXLEN + TAIL_MERGIN];
+                codewords = new uint32_t[len];
                 exceptionsPositions = new uint32_t[len];
                 exceptionsValues = new uint32_t[len];
                 exceptions = new uint32_t[2 * len];
@@ -214,14 +213,12 @@ PForDelta::encodeBlock(uint32_t *in, uint32_t len,
                         if (curExcept > 0) {
                                 uint32_t        cur;
                                 uint32_t        prev;
-                                uint32_t        gap;
 
                                 for (i = curExcept - 1; i > 0; i--) {
                                         cur = exceptionsPositions[i];
                                         prev = exceptionsPositions[i - 1];
-                                        gap = cur - prev;
 
-                                        exceptionsPositions[i] = gap;
+                                        exceptionsPositions[i] = cur - prev;
                                 }
 
                                 for (i = 0; i < curExcept; i++) {
@@ -285,19 +282,23 @@ PForDelta::encodeArray(uint32_t *in, uint32_t len,
         nvalue = 1;
 
         for (i = 0; i < numBlocks; i++) {
-                if (i != numBlocks - 1) {
+                if (__likely(i != numBlocks - 1)) {
                         PForDelta::encodeBlock(in, PFORDELTA_BLOCKSZ,
                                         out, csize, PForDelta::findBestB); 
 
                         in += PFORDELTA_BLOCKSZ; 
                         out += csize;
                 } else {
-                        if ((len % PFORDELTA_BLOCKSZ) != 0)
-                                PForDelta::encodeBlock(in, len % PFORDELTA_BLOCKSZ,
-                                                out, csize, PForDelta::findBestB); 
-                        else
-                                PForDelta::encodeBlock(in, PFORDELTA_BLOCKSZ,
-                                                out, csize, PForDelta::findBestB); 
+                        /*
+                         * This is a code to pack gabage in the tail of lists.
+                         * I think it couldn't be a bottleneck.
+                         */
+                        uint32_t        nblk;
+
+                        nblk = ((len % PFORDELTA_BLOCKSZ) != 0)?
+                                len % PFORDELTA_BLOCKSZ : PFORDELTA_BLOCKSZ;
+                        PForDelta::encodeBlock(in, nblk,
+                                out, csize, PForDelta::findBestB);
                 }
 
                 nvalue += csize;

@@ -18,8 +18,14 @@
 #include <stdint.h>
 
 #include "open_coders.hpp"
+#include "io/BitsWriter.hpp"
 
 class OPTPForDeltaV2 {
+        private:
+                static void encodeBlock(uint32_t *in,
+                                uint32_t len, uint32_t b,
+                                uint32_t *out, uint32_t &nvalue);
+
         public:
                 static void encodeArray(uint32_t *in, uint32_t len,
                                 uint32_t *out, uint32_t &nvalue);
