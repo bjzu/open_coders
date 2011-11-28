@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "open_coders.hpp"
+#include "compress/Simple16.hpp"
 #include "io/BitsWriter.hpp"
 
 class OPTPForDeltaV2 {

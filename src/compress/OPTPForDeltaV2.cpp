@@ -105,9 +105,7 @@ static __optp4deltav2_unpacker  __optp4deltav2_unpack[] = {
         __optp4deltav2_unpack32
 };
 
-/* A hard-corded Simple16 wirtten in the original code */
-static void __optp4deltav2_simple16_encode(uint32_t **in,
-                uint32_t **out, uint32_t len);
+/* A hard-corded Simple16 decoder wirtten in the original code */
 static inline void __optp4deltav2_simple16_decode(uint32_t *in,
                 uint32_t *out) __attribute__((always_inline));
 
@@ -187,12 +185,8 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
                                 exceptions[i + curExcept] = exceptionsValues[i];
                         }
 
-                        for (uint32_t *pin = &exceptions[0],
-                                        pout = &encodedExceptions[0];
-                                        pin < &exceptions[2 * curExcept]; )
-                                __optp4deltav2_simple16_encode();
-
-                        encodedExceptions_sz = pout - &encodedExceptions[0];
+                        Simple16::encodeArray(exceptions, 2 * curExcept,
+                                        encodedExceptions, encodedExceptions_sz);
                 }
 
                 wt->bit_flush();
@@ -282,58 +276,6 @@ OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
 }
 
 /* --- Intra functions below --- */
-
-static uint32_t __optp4deltav2_simple16_codeLogs[16] = {
-        28, 21, 21, 21, 14, 9, 8, 7, 6, 6, 5, 5, 4, 3, 2, 1
-};
-
-static uint32_t __optp4deltav2_simple16_possLogs[16][] = {
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-        {2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-        {1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-        {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0},
-        {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {4, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {3, 4, 4, 4, 4, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {5, 5, 5, 5, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {4, 4, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {6, 6, 6, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {5, 5, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {10, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-};
-
-/* A hard-corded Simple16 wirtten in the original code */
-void
-__optp4deltav2_simple16_encode(uint32_t **in,
-        uint32_t **out, uint32_t len)
-{
-        uint32_t        n;
-        uint32_t        p;
-
-        for (uint32_t i = 0; i < 16; i++) {
-                **out = i << 28;
-
-                n = (__optp4deltav2_simple16_codeLogs[i] < len)?
-                        __optp4deltav2_simple16_codeLogs[i] < len : len;
-
-                for (uint32_t bpos = 0, p = 0; p < n &&
-                        *((*in) + p) < (1 << __optp4deltav2_simple16_possLogs[i][p]); p++) {
-                        **out += *((*in) + p) << bpos;
-                        bpos += __optp4deltav2_simple16_possLogs[i][p];
-                }
-
-                if (p == n) {
-                        *in += n;
-                        *w++;
-
-                        break;
-                }
-        }
-}
 
 void
 __optp4deltav2_simple16_decode(uint32_t *in,
