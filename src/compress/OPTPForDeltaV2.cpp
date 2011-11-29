@@ -126,6 +126,8 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
         uint32_t        encodedExceptions_sz;
         BitsWriter      *wt;
 
+        curExcept = 0;
+
         if (len > 0) {
                 exceptionsPositions = new uint32_t[len];
                 exceptionsValues = new uint32_t[len];
@@ -155,15 +157,12 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
                         return;
                 }
 
-                curExcept = 0;
-
                 for (uint32_t i = 0; i < len; i++) {
                         wt->bit_writer(in[i], b);
 
                         if (in[i] >= (1U << b)) {
-                                e = in[i] >> b;
                                 exceptionsPositions[curExcept] = i;
-                                exceptionsValues[curExcept] = e;
+                                exceptionsValues[curExcept] = in[i] >> b;
                                 curExcept++;
                         }
                 }
@@ -171,7 +170,6 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
                 if (curExcept > 0) {
                         uint32_t        cur;
                         uint32_t        prev;
-                        uint32_t        *pout;
 
                         for (uint32_t i = curExcept - 1; i > 0; i--) {
                                 cur = exceptionsPositions[i];
@@ -220,6 +218,7 @@ OPTPForDeltaV2::encodeArray(uint32_t *in, uint32_t len,
         /* Output the number of blocks */
         *out++ = numBlocks;
         nvalue = 1;
+        b = 0;
 
         for (uint32_t i = 0; i < numBlocks; i++) {
                 uint32_t        chunksz;
@@ -234,7 +233,7 @@ OPTPForDeltaV2::encodeArray(uint32_t *in, uint32_t len,
 
                                 if (chunksz > csize) {
                                         b = __optp4deltav2_possLogs[j];
-                                        chunksz = cisze;
+                                        chunksz = csize;
                                 }
                         }
 
@@ -260,7 +259,7 @@ OPTPForDeltaV2::encodeArray(uint32_t *in, uint32_t len,
 
                                 if (chunksz > csize) {
                                         b = __optp4deltav2_possLogs[j];
-                                        chunksz = cisze;
+                                        chunksz = csize;
                                 }
                         }
 
@@ -279,7 +278,7 @@ OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
         uint32_t        numBlocks;
         uint32_t        b;
         uint32_t        nExceptions;
-        uint32_t        nvalue;
+        uint32_t        nv;
         uint32_t        lpos;
         uint32_t        except[2 * OPTPFORDELTAV2_BLOCKSZ + TAIL_MERGIN + 1];
 
@@ -293,10 +292,12 @@ OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
                 in += ((b * OPTPFORDELTAV2_BLOCKSZ) >> 5);
 
                 if (nExceptions != 0) {
-                        __optp4deltav2_simple16_decode(in, 2 * nExceptions, except, nvalue);
-                        in += nvalue;
+                        __optp4deltav2_simple16_decode(in, 2 * nExceptions, except, nv);
+                        in += nv;
 
-                        for (uint32_t j = 0, lpos = except[0]; j < nExceptions; j++) {
+                        lpos = except[0];
+
+                        for (uint32_t j = 0; j < nExceptions; j++) {
                                 out[lpos] += except[nExceptions + j] << b;
                                 lpos += except[j + 1] + 1;
                         }
@@ -307,7 +308,7 @@ OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
 /* --- Intra functions below --- */
 
 void
-__optp4deltav2_simple16_decode(uint32_t *in, uint32_t len
+__optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                 uint32_t *out, uint32_t &nvalue)
 {
         uint32_t        hd;

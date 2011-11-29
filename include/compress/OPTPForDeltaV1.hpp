@@ -17,8 +17,6 @@
 #ifndef OPTPFORDELTAV1_HPP
 #define OPTPFORDELTAV1_HPP
 
-#include <stdint.h>
-
 #include "open_coders.hpp"
 #include "compress/Simple16.hpp"
 #include "compress/PForDelta.hpp"
