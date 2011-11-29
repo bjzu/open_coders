@@ -106,8 +106,8 @@ static __optp4deltav2_unpacker  __optp4deltav2_unpack[] = {
 };
 
 /* A hard-corded Simple16 decoder wirtten in the original code */
-static inline void __optp4deltav2_simple16_decode(uint32_t *in,
-                uint32_t *out) __attribute__((always_inline));
+static inline void __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
+                uint32_t *out, uint32_t &nvalue) __attribute__((always_inline));
 
 static uint32_t __optp4deltav2_possLogs[] = {
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 32
@@ -217,7 +217,11 @@ OPTPForDeltaV2::encodeArray(uint32_t *in, uint32_t len,
         numBlocks = int_utils::div_roundup(len,
                         OPTPFORDELTAV2_BLOCKSZ); 
 
-        for (uint32_t i = 0, nvalue = 0; i < numBlocks; i++) {
+        /* Output the number of blocks */
+        *out++ = numBlocks;
+        nvalue = 1;
+
+        for (uint32_t i = 0; i < numBlocks; i++) {
                 uint32_t        chunksz;
 
                 chunksz = UINT32_MAX;
@@ -272,16 +276,337 @@ void
 OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
                 uint32_t *out, uint32_t nvalue)
 {
-        eoutput("No implemented yet");
+        uint32_t        numBlocks;
+        uint32_t        b;
+        uint32_t        nExceptions;
+        uint32_t        nvalue;
+        uint32_t        lpos;
+        uint32_t        except[2 * OPTPFORDELTAV2_BLOCKSZ + TAIL_MERGIN + 1];
+
+        numBlocks = *in++;
+
+        for (uint32_t i = 0; i < numBlocks; i++) {
+                b = *in >> OPTPFORDELTAV2_NEXCEPT; 
+                nExceptions = *in & ((1 << OPTPFORDELTAV2_NEXCEPT) - 1); 
+
+                __optp4deltav2_unpack[b](out, ++in);
+                in += ((b * OPTPFORDELTAV2_BLOCKSZ) >> 5);
+
+                if (nExceptions != 0) {
+                        __optp4deltav2_simple16_decode(in, 2 * nExceptions, except, nvalue);
+                        in += nvalue;
+
+                        for (uint32_t j = 0, lpos = except[0]; j < nExceptions; j++) {
+                                out[lpos] += except[nExceptions + j] << b;
+                                lpos += except[j + 1] + 1;
+                        }
+                }
+        }
 }
 
 /* --- Intra functions below --- */
 
 void
-__optp4deltav2_simple16_decode(uint32_t *in,
-                uint32_t *out)
+__optp4deltav2_simple16_decode(uint32_t *in, uint32_t len
+                uint32_t *out, uint32_t &nvalue)
 {
+        uint32_t        hd;
+        uint32_t        nlen;
 
+        nvalue = 0;
+        nlen = 0;
+
+        while (len > nlen) {
+                hd = *in >> 28;
+
+                switch (hd) {
+                case 0:
+                        *out++ = (*in >> 27) & 0x01;
+                        *out++ = (*in >> 26) & 0x01;
+                        *out++ = (*in >> 25) & 0x01;
+                        *out++ = (*in >> 24) & 0x01;
+                        *out++ = (*in >> 23) & 0x01;
+                        *out++ = (*in >> 22) & 0x01;
+                        *out++ = (*in >> 21) & 0x01;
+                        *out++ = (*in >> 20) & 0x01;
+                        *out++ = (*in >> 19) & 0x01;
+                        *out++ = (*in >> 18) & 0x01;
+                        *out++ = (*in >> 17) & 0x01;
+                        *out++ = (*in >> 16) & 0x01;
+                        *out++ = (*in >> 15) & 0x01;
+                        *out++ = (*in >> 14) & 0x01;
+                        *out++ = (*in >> 13) & 0x01;
+                        *out++ = (*in >> 12) & 0x01;
+                        *out++ = (*in >> 11) & 0x01;
+                        *out++ = (*in >> 10) & 0x01;
+                        *out++ = (*in >> 9) & 0x01;
+                        *out++ = (*in >> 8) & 0x01;
+                        *out++ = (*in >> 7) & 0x01;
+                        *out++ = (*in >> 6) & 0x01;
+                        *out++ = (*in >> 5) & 0x01;
+                        *out++ = (*in >> 4) & 0x01;
+                        *out++ = (*in >> 3) & 0x01;
+                        *out++ = (*in >> 2) & 0x01;
+                        *out++ = (*in >> 1) & 0x01;
+                        *out++ = *in++ & 0x01;
+
+                        nvalue++;
+                        nlen += 28;
+
+                        break;
+
+                case 1:
+                        *out++ = (*in >> 26) & 0x03;
+                        *out++ = (*in >> 24) & 0x03;
+                        *out++ = (*in >> 22) & 0x03;
+                        *out++ = (*in >> 20) & 0x03;
+                        *out++ = (*in >> 18) & 0x03;
+                        *out++ = (*in >> 16) & 0x03;
+                        *out++ = (*in >> 14) & 0x03;
+
+                        *out++ = (*in >> 13) & 0x01;
+                        *out++ = (*in >> 12) & 0x01;
+                        *out++ = (*in >> 11) & 0x01;
+                        *out++ = (*in >> 10) & 0x01;
+                        *out++ = (*in >> 9) & 0x01;
+                        *out++ = (*in >> 8) & 0x01;
+                        *out++ = (*in >> 7) & 0x01;
+                        *out++ = (*in >> 6) & 0x01;
+                        *out++ = (*in >> 5) & 0x01;
+                        *out++ = (*in >> 4) & 0x01;
+                        *out++ = (*in >> 3) & 0x01;
+                        *out++ = (*in >> 2) & 0x01;
+                        *out++ = (*in >> 1) & 0x01;
+                        *out++ = *in++ & 0x01;
+
+                        nvalue++;
+                        nlen += 21;
+
+                        break;
+
+                case 2:
+                        *out = (*in >> 27) & 0x01;
+                        *out = (*in >> 26) & 0x01;
+                        *out = (*in >> 25) & 0x01;
+                        *out = (*in >> 24) & 0x01;
+                        *out = (*in >> 23) & 0x01;
+                        *out = (*in >> 22) & 0x01;
+                        *out = (*in >> 21) & 0x01;
+
+                        *out = (*in >> 19) & 0x03;
+                        *out = (*in >> 17) & 0x03;
+                        *out = (*in >> 15) & 0x03;
+                        *out = (*in >> 13) & 0x03;
+                        *out = (*in >> 11) & 0x03;
+                        *out = (*in >> 9) & 0x03;
+                        *out = (*in >> 7) & 0x03;
+
+                        *out = (*in >> 6) & 0x01;
+                        *out = (*in >> 5) & 0x01;
+                        *out = (*in >> 4) & 0x01;
+                        *out = (*in >> 3) & 0x01;
+                        *out = (*in >> 2) & 0x01;
+                        *out = (*in >> 1) & 0x01;
+                        *out = *in++ & 0x01;
+
+                        nvalue++;
+                        nlen += 21;
+
+                        break;
+
+                case 3:
+                        *out++ = (*in >> 27) & 0x01;
+                        *out++ = (*in >> 26) & 0x01;
+                        *out++ = (*in >> 25) & 0x01;
+                        *out++ = (*in >> 24) & 0x01;
+                        *out++ = (*in >> 23) & 0x01;
+                        *out++ = (*in >> 22) & 0x01;
+                        *out++ = (*in >> 21) & 0x01;
+                        *out++ = (*in >> 20) & 0x01;
+                        *out++ = (*in >> 19) & 0x01;
+                        *out++ = (*in >> 18) & 0x01;
+                        *out++ = (*in >> 17) & 0x01;
+                        *out++ = (*in >> 16) & 0x01;
+                        *out++ = (*in >> 15) & 0x01;
+                        *out++ = (*in >> 14) & 0x01;
+
+                        *out++ = (*in >> 12) & 0x03;
+                        *out++ = (*in >> 10) & 0x03;
+                        *out++ = (*in >> 8) & 0x03;
+                        *out++ = (*in >> 6) & 0x03;
+                        *out++ = (*in >> 4) & 0x03;
+                        *out++ = (*in >> 2) & 0x03;
+                        *out++ = *in++ & 0x03;
+
+                        nvalue++;
+                        nlen += 21;
+
+                        break;
+
+                case 4:
+                        *out++ = (*in >> 26) & 0x03;
+                        *out++ = (*in >> 24) & 0x03;
+                        *out++ = (*in >> 22) & 0x03;
+                        *out++ = (*in >> 20) & 0x03;
+                        *out++ = (*in >> 18) & 0x03;
+                        *out++ = (*in >> 16) & 0x03;
+                        *out++ = (*in >> 14) & 0x03;
+                        *out++ = (*in >> 12) & 0x03;
+                        *out++ = (*in >> 10) & 0x03;
+                        *out++ = (*in >> 8) & 0x03;
+                        *out++ = (*in >> 6) & 0x03;
+                        *out++ = (*in >> 4) & 0x03;
+                        *out++ = (*in >> 2) & 0x03;
+                        *out++ = *in++ & 0x03;
+
+                        nvalue++;
+                        nlen += 14;
+
+                        break;
+
+                case 5:
+                        *out++ = (*in >> 24) & 0x0f;
+
+                        *out++ = (*in >> 21) & 0x07;
+                        *out++ = (*in >> 18) & 0x07;
+                        *out++ = (*in >> 15) & 0x07;
+                        *out++ = (*in >> 12) & 0x07;
+                        *out++ = (*in >> 9) & 0x07;
+                        *out++ = (*in >> 6) & 0x07;
+                        *out++ = (*in >> 3) & 0x07;
+                        *out++ = *in++ & 0x07;
+
+                        nvalue++;
+                        nlen += 9;
+
+                        break;
+
+                case 6:
+                        *out++ = (*in >> 25) & 0x07;
+
+                        *out++ = (*in >> 21) & 0x0f;
+                        *out++ = (*in >> 17) & 0x0f;
+                        *out++ = (*in >> 13) & 0x0f;
+                        *out++ = (*in >> 9) & 0x0f;
+
+                        *out++ = (*in >> 6) & 0x07;
+                        *out++ = (*in >> 3) & 0x07;
+                        *out++ = *in++ & 0x07;
+
+                        nvalue++;
+                        nlen += 8;
+
+                        break;
+
+                case 7:
+                        *out++ = (*in >> 24) & 0x0f;
+                        *out++ = (*in >> 20) & 0x0f;
+                        *out++ = (*in >> 16) & 0x0f;
+                        *out++ = (*in >> 12) & 0x0f;
+                        *out++ = (*in >> 8) & 0x0f;
+                        *out++ = (*in >> 4) & 0x0f;
+                        *out++ = *in++ & 0x0f;
+
+                        nvalue++;
+                        nlen += 7;
+
+                        break;
+
+                case 8:
+                        *out++ = (*in >> 23) & 0x1f;
+                        *out++ = (*in >> 18) & 0x1f;
+                        *out++ = (*in >> 13) & 0x1f;
+                        *out++ = (*in >> 8) & 0x1f;
+
+                        *out++ = (*in >> 4) & 0x0f;
+                        *out++ = *in++ & 0x0f;
+
+                        nvalue++;
+                        nlen += 6;
+
+                        break;
+
+                case 9:
+                        *out++ = (*in >> 24) & 0x0f;
+                        *out++ = (*in >> 20) & 0x0f;
+
+                        *out++ = (*in >> 15) & 0x1f;
+                        *out++ = (*in >> 10) & 0x1f;
+                        *out++ = (*in >> 5) & 0x1f;
+                        *out++ = *in++ & 0x1f;
+
+                        nvalue++;
+                        nlen += 6;
+
+                        break;
+
+                case 10:
+                        *out++ = (*in >> 22) & 0x3f;
+                        *out++ = (*in >> 16) & 0x3f;
+                        *out++ = (*in >> 10) & 0x3f;
+
+                        *out++ = (*in >> 5) & 0x1f;
+                        *out++ = *in++ & 0x1f;
+
+                        nvalue++;
+                        nlen += 5;
+
+                        break;
+
+                case 11:
+                        *out++ = (*in >> 23) & 0x1f;
+                        *out++ = (*in >> 18) & 0x1f;
+
+                        *out++ = (*in >> 12) & 0x3f;
+                        *out++ = (*in >> 6) & 0x3f;
+                        *out++ = *in++ & 0x3f;
+
+                        nvalue++;
+                        nlen += 5;
+
+                        break;
+
+                case 12:
+                        *out++ = (*in >> 21) & 0x7f;
+                        *out++ = (*in >> 14) & 0x7f;
+                        *out++ = (*in >> 7) & 0x7f;
+                        *out++ = *in++ & 0x7f;
+                       
+                        nvalue++;
+                        nlen += 4;
+
+                        break;
+
+                case 13:
+                        *out++ = (*in >> 18) & 0x03ff;
+
+                        *out++ = (*in >> 9) & 0x01ff;
+                        *out++ = *in++ & 0x01ff;
+
+                        nvalue++;
+                        nlen += 3;
+
+                        break;
+
+                case 14:
+                        *out++ = (*in >> 14) & 0x3fff;
+                        *out++ = *in++ & 0x3fff;
+
+                        nvalue++;
+                        nlen += 2;
+
+                        break;
+
+                case 15:
+                        *out++ = *in++ & 0x0fffffff;
+
+                        nvalue++;
+                        nlen += 1;
+
+                        break;
+
+                }
+        }
 }
 
 void
