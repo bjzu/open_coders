@@ -16,7 +16,7 @@
 #define PFORDELTA_RATIO         0.1
 
 /* A flag below based on a original code given by Shuai Ding */
-#define PFORDELTA_USE_HARDCODE_SIMPLE16         0
+#define PFORDELTA_USE_HARDCODE_SIMPLE16         1
 
 /*
  * Lemme resume the block's format here.
@@ -340,9 +340,9 @@ PForDelta::decodeArray(uint32_t *in, uint32_t len,
                 encodedExceptionsSize = *in & ((1 << PFORDELTA_EXCEPTSZ) - 1); 
 
                 if (PFORDELTA_USE_HARDCODE_SIMPLE16)
-                        Simple16::decodeArray(++in, 2 * nExceptions, except, 2 * nExceptions);
-                else
                         __p4delta_simple16_decode(++in, 2 * nExceptions, except, 2 * nExceptions);
+                else
+                        Simple16::decodeArray(++in, 2 * nExceptions, except, 2 * nExceptions);
 
                 in += encodedExceptionsSize;
 
