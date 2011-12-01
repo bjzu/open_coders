@@ -20,19 +20,21 @@
 #define OPTPFORDELTAV2_BLOCKSZ  (128 * OPTPFORDELTAV2_NBLOCK)
 
 /*
- * Lemme resume the block's format here, just to
- * not forget it too soon.
- *      |-----------------------------------|
- *      |             b |       nExceptions |
- *      |       22 bits |          10 bits  |
- *      |-----------------------------------|
- *      |        fixed_b(codewords)         |
- *      |-----------------------------------|
- *      |          s16(exceptions)          |
- *      |-----------------------------------|
+ * Lemme resume the block's format here.
+ *
+ *      |--------------------------------------------------|
+ *      |       b | nExceptions | s16encodedExceptionSize  |
+ *      |  6 bits |   10 bits   |         16 bits          |
+ *      |--------------------------------------------------|
+ *      |                s16(exceptions)                   |
+ *      |--------------------------------------------------|
+ *      |              fixed_b(codewords)                  |
+ *      |--------------------------------------------------|
+ *
  */
-#define OPTPFORDELTAV2_B                22
+#define OPTPFORDELTAV2_B                6
 #define OPTPFORDELTAV2_NEXCEPT          10
+#define OPTPFORDELTAV2_EXCEPTSZ         16
 
 #define __optp4deltav2_copy(src, dest)  \
         __asm__ __volatile__(           \
@@ -107,10 +109,16 @@ static __optp4deltav2_unpacker  __optp4deltav2_unpack[] = {
 
 /* A hard-corded Simple16 decoder wirtten in the original code */
 static inline void __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
-                uint32_t *out, uint32_t &nvalue) __attribute__((always_inline));
+                uint32_t *out, uint32_t nvalue) __attribute__((always_inline));
 
 static uint32_t __optp4deltav2_possLogs[] = {
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 32
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 32
+};
+
+static uint32_t __optp4deltav2_codeLogs[] = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 0, 14,
+        0 ,0, 0, 15,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16
 };
 
 void
@@ -127,6 +135,7 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
         BitsWriter      *wt;
 
         curExcept = 0;
+        encodedExceptions_sz = 0;
 
         if (len > 0) {
                 exceptionsPositions = new uint32_t[len];
@@ -145,10 +154,13 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
                         eoutput("Can't initialize a class");
 
                 if (b == 32) {
-                        *out = (b << OPTPFORDELTAV2_NEXCEPT) | curExcept;
+                        *out = (__optp4deltav2_codeLogs[b] << (OPTPFORDELTAV2_NEXCEPT +
+                                OPTPFORDELTAV2_EXCEPTSZ)) |
+                                (curExcept << OPTPFORDELTAV2_EXCEPTSZ) | encodedExceptions_sz;
 
                         for (uint32_t i = 0; i < len; i++)
                                 wt->bit_writer(in[i], b);
+
                         wt->bit_flush();
                         nvalue = 1 + wt->written;
 
@@ -176,10 +188,14 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
                                 prev = exceptionsPositions[i - 1];
 
                                 exceptionsPositions[i] = cur - prev;
+                                exceptionsPositions[i]--;
+
+                                assert_debug(exceptionsPositions[i] <
+                                        OPTPFORDELTAV2_BLOCKSZ);
                         }
 
                         for (uint32_t i = 0; i < curExcept; i++) {
-                                exceptions[i] = exceptionsPositions[i] - 1;
+                                exceptions[i] = exceptionsPositions[i];
                                 exceptions[i + curExcept] = exceptionsValues[i];
                         }
 
@@ -190,14 +206,19 @@ OPTPForDeltaV2::encodeBlock(uint32_t *in,
                 wt->bit_flush();
 
                 /* Write a header following the format */
-                *out = (b << OPTPFORDELTAV2_NEXCEPT) | curExcept;
+                *out = (__optp4deltav2_codeLogs[b] << (OPTPFORDELTAV2_NEXCEPT +
+                        OPTPFORDELTAV2_EXCEPTSZ)) |
+                        (curExcept << OPTPFORDELTAV2_EXCEPTSZ) | encodedExceptions_sz;
+
                 nvalue = 1 + wt->written;
 
                 /* Write exceptional values */
-                memcpy(out + nvalue, encodedExceptions, encodedExceptions_sz);
+                memcpy(out + nvalue, encodedExceptions, encodedExceptions_sz * sizeof(uint32_t));
                 nvalue += encodedExceptions_sz;
 
                 /* Finalization */
+                delete[] exceptionsPositions;
+                delete[] exceptions;
                 delete[] exceptionsValues;
                 delete[] encodedExceptions;
                 delete wt;
@@ -218,11 +239,11 @@ OPTPForDeltaV2::encodeArray(uint32_t *in, uint32_t len,
         /* Output the number of blocks */
         *out++ = numBlocks;
         nvalue = 1;
-        b = 0;
 
         for (uint32_t i = 0; i < numBlocks; i++) {
                 uint32_t        chunksz;
 
+                b = 32;
                 chunksz = UINT32_MAX;
 
                 if (__likely(i != numBlocks - 1)) {
@@ -278,30 +299,45 @@ OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
         uint32_t        numBlocks;
         uint32_t        b;
         uint32_t        nExceptions;
-        uint32_t        nv;
+        uint32_t        encodedExceptionsSize;
         uint32_t        lpos;
         uint32_t        except[2 * OPTPFORDELTAV2_BLOCKSZ + TAIL_MERGIN + 1];
 
         numBlocks = *in++;
 
         for (uint32_t i = 0; i < numBlocks; i++) {
-                b = *in >> OPTPFORDELTAV2_NEXCEPT; 
-                nExceptions = *in & ((1 << OPTPFORDELTAV2_NEXCEPT) - 1); 
+                b = *in >> (32 - OPTPFORDELTAV2_B);
+
+                nExceptions = (*in >>
+                                (32 - (OPTPFORDELTAV2_B + OPTPFORDELTAV2_NEXCEPT))) &
+                                ((1 << OPTPFORDELTAV2_NEXCEPT) - 1);
+
+                encodedExceptionsSize = *in & ((1 << OPTPFORDELTAV2_EXCEPTSZ) - 1); 
+
+                assert_debug(b <= 17 &&
+                        nExceptions <= OPTPFORDELTAV2_BLOCKSZ);
 
                 __optp4deltav2_unpack[b](out, ++in);
-                in += ((b * OPTPFORDELTAV2_BLOCKSZ) >> 5);
+                in += int_utils::div_roundup(
+                        __optp4deltav2_possLogs[b] * OPTPFORDELTAV2_BLOCKSZ, 32);
 
                 if (nExceptions != 0) {
-                        __optp4deltav2_simple16_decode(in, 2 * nExceptions, except, nv);
-                        in += nv;
+                        __optp4deltav2_simple16_decode(in, 2 * nExceptions,
+                                except, 2 * nExceptions);
+
+                        in += encodedExceptionsSize;
 
                         lpos = except[0];
 
                         for (uint32_t j = 0; j < nExceptions; j++) {
+                                //assert_debug(lpos < OPTPFORDELTAV2_BLOCKSZ);
+
                                 out[lpos] += except[nExceptions + j] << b;
                                 lpos += except[j + 1] + 1;
                         }
                 }
+
+                out += OPTPFORDELTAV2_BLOCKSZ;
         }
 }
 
@@ -309,12 +345,11 @@ OPTPForDeltaV2::decodeArray(uint32_t *in, uint32_t len,
 
 void
 __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
-                uint32_t *out, uint32_t &nvalue)
+                uint32_t *out, uint32_t nvalue)
 {
         uint32_t        hd;
         uint32_t        nlen;
 
-        nvalue = 0;
         nlen = 0;
 
         while (len > nlen) {
@@ -351,7 +386,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 1) & 0x01;
                         *out++ = *in++ & 0x01;
 
-                        nvalue++;
                         nlen += 28;
 
                         break;
@@ -380,37 +414,35 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 1) & 0x01;
                         *out++ = *in++ & 0x01;
 
-                        nvalue++;
                         nlen += 21;
 
                         break;
 
                 case 2:
-                        *out = (*in >> 27) & 0x01;
-                        *out = (*in >> 26) & 0x01;
-                        *out = (*in >> 25) & 0x01;
-                        *out = (*in >> 24) & 0x01;
-                        *out = (*in >> 23) & 0x01;
-                        *out = (*in >> 22) & 0x01;
-                        *out = (*in >> 21) & 0x01;
+                        *out++ = (*in >> 27) & 0x01;
+                        *out++ = (*in >> 26) & 0x01;
+                        *out++ = (*in >> 25) & 0x01;
+                        *out++ = (*in >> 24) & 0x01;
+                        *out++ = (*in >> 23) & 0x01;
+                        *out++ = (*in >> 22) & 0x01;
+                        *out++ = (*in >> 21) & 0x01;
 
-                        *out = (*in >> 19) & 0x03;
-                        *out = (*in >> 17) & 0x03;
-                        *out = (*in >> 15) & 0x03;
-                        *out = (*in >> 13) & 0x03;
-                        *out = (*in >> 11) & 0x03;
-                        *out = (*in >> 9) & 0x03;
-                        *out = (*in >> 7) & 0x03;
+                        *out++ = (*in >> 19) & 0x03;
+                        *out++ = (*in >> 17) & 0x03;
+                        *out++ = (*in >> 15) & 0x03;
+                        *out++ = (*in >> 13) & 0x03;
+                        *out++ = (*in >> 11) & 0x03;
+                        *out++ = (*in >> 9) & 0x03;
+                        *out++ = (*in >> 7) & 0x03;
 
-                        *out = (*in >> 6) & 0x01;
-                        *out = (*in >> 5) & 0x01;
-                        *out = (*in >> 4) & 0x01;
-                        *out = (*in >> 3) & 0x01;
-                        *out = (*in >> 2) & 0x01;
-                        *out = (*in >> 1) & 0x01;
-                        *out = *in++ & 0x01;
+                        *out++ = (*in >> 6) & 0x01;
+                        *out++ = (*in >> 5) & 0x01;
+                        *out++ = (*in >> 4) & 0x01;
+                        *out++ = (*in >> 3) & 0x01;
+                        *out++ = (*in >> 2) & 0x01;
+                        *out++ = (*in >> 1) & 0x01;
+                        *out++ = *in++ & 0x01;
 
-                        nvalue++;
                         nlen += 21;
 
                         break;
@@ -439,7 +471,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 2) & 0x03;
                         *out++ = *in++ & 0x03;
 
-                        nvalue++;
                         nlen += 21;
 
                         break;
@@ -460,7 +491,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 2) & 0x03;
                         *out++ = *in++ & 0x03;
 
-                        nvalue++;
                         nlen += 14;
 
                         break;
@@ -477,7 +507,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 3) & 0x07;
                         *out++ = *in++ & 0x07;
 
-                        nvalue++;
                         nlen += 9;
 
                         break;
@@ -494,7 +523,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 3) & 0x07;
                         *out++ = *in++ & 0x07;
 
-                        nvalue++;
                         nlen += 8;
 
                         break;
@@ -508,7 +536,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 4) & 0x0f;
                         *out++ = *in++ & 0x0f;
 
-                        nvalue++;
                         nlen += 7;
 
                         break;
@@ -522,7 +549,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 4) & 0x0f;
                         *out++ = *in++ & 0x0f;
 
-                        nvalue++;
                         nlen += 6;
 
                         break;
@@ -536,7 +562,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 5) & 0x1f;
                         *out++ = *in++ & 0x1f;
 
-                        nvalue++;
                         nlen += 6;
 
                         break;
@@ -549,7 +574,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 5) & 0x1f;
                         *out++ = *in++ & 0x1f;
 
-                        nvalue++;
                         nlen += 5;
 
                         break;
@@ -562,7 +586,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 6) & 0x3f;
                         *out++ = *in++ & 0x3f;
 
-                        nvalue++;
                         nlen += 5;
 
                         break;
@@ -573,7 +596,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 7) & 0x7f;
                         *out++ = *in++ & 0x7f;
                        
-                        nvalue++;
                         nlen += 4;
 
                         break;
@@ -584,7 +606,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 9) & 0x01ff;
                         *out++ = *in++ & 0x01ff;
 
-                        nvalue++;
                         nlen += 3;
 
                         break;
@@ -593,7 +614,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                         *out++ = (*in >> 14) & 0x3fff;
                         *out++ = *in++ & 0x3fff;
 
-                        nvalue++;
                         nlen += 2;
 
                         break;
@@ -601,7 +621,6 @@ __optp4deltav2_simple16_decode(uint32_t *in, uint32_t len,
                 case 15:
                         *out++ = *in++ & 0x0fffffff;
 
-                        nvalue++;
                         nlen += 1;
 
                         break;
@@ -615,7 +634,7 @@ __optp4deltav2_unpack0(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32) {
                 __optp4deltav2_zero32(out);
         }
@@ -626,7 +645,7 @@ __optp4deltav2_unpack1(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 1) {
                 out[0] = in[0] >> 31;
                 out[1] = (in[0] >> 30) & 0x01;
@@ -668,7 +687,7 @@ __optp4deltav2_unpack2(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 2) {
                 out[0] = in[0] >> 30;
                 out[1] = (in[0] >> 28) & 0x03;
@@ -710,7 +729,7 @@ __optp4deltav2_unpack3(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 3) {
                 out[0] = in[0] >> 29;
                 out[1] = (in[0] >> 26) & 0x07;
@@ -754,7 +773,7 @@ __optp4deltav2_unpack4(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 4) {
                 out[0] = in[0] >> 28;
                 out[1] = (in[0] >> 24) & 0x0f;
@@ -796,7 +815,7 @@ __optp4deltav2_unpack5(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 5) {
                 out[0] = in[0] >> 27;
                 out[1] = (in[0] >> 22) & 0x1f;
@@ -842,7 +861,7 @@ __optp4deltav2_unpack6(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 6) {
                 out[0] = in[0] >> 26;
                 out[1] = (in[0] >> 20) & 0x3f;
@@ -888,7 +907,7 @@ __optp4deltav2_unpack7(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 7) {
                 out[0] = in[0] >> 25;
                 out[1] = (in[0] >> 18) & 0x7f;
@@ -936,7 +955,7 @@ __optp4deltav2_unpack8(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 8) {
                 out[0] = in[0] >> 24;
                 out[1] = (in[0] >> 16) & 0xff;
@@ -978,7 +997,7 @@ __optp4deltav2_unpack9(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 9) {
                 out[0] = in[0] >> 23;
                 out[1] = (in[0] >> 14) & 0x01ff;
@@ -1028,7 +1047,7 @@ __optp4deltav2_unpack10(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 10) {
                 out[0] = in[0] >> 22;
                 out[1] = (in[0] >> 12) & 0x03ff;
@@ -1078,7 +1097,7 @@ __optp4deltav2_unpack11(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 11) {
                 out[0] = in[0] >> 21;
                 out[1] = (in[0] >> 10) & 0x07ff;
@@ -1130,7 +1149,7 @@ __optp4deltav2_unpack12(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 12) {
                 out[0] = in[0] >> 20;
                 out[1] = (in[0] >> 8) & 0x0fff;
@@ -1180,7 +1199,7 @@ __optp4deltav2_unpack13(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 13) {
                 out[0] = in[0] >> 19;
                 out[1] = (in[0] >> 6) & 0x1fff;
@@ -1234,7 +1253,7 @@ __optp4deltav2_unpack16(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 16) {
                 out[0] = in[0] >> 16;
                 out[1] = in[0] & 0xffff;
@@ -1276,7 +1295,7 @@ __optp4deltav2_unpack20(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 32, out += 32, in += 20) {
                 out[0] = in[0] >> 12;
                 out[1] = (in[0] << 8) & 0x0fffff;
@@ -1334,7 +1353,7 @@ __optp4deltav2_unpack32(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (OPTPFORDELTAV2_NBLOCK << 5);
+        for (i = 0; i < OPTPFORDELTAV2_BLOCKSZ;
                         i += 16, out += 16, in += 16) {
                 __optp4deltav2_copy(in, out);
         }

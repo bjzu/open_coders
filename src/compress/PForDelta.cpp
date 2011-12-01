@@ -16,15 +16,17 @@
 #define PFORDELTA_RATIO         0.1
 
 /*
- * Lemme resume the block's format here, just to not forget it too soon.
+ * Lemme resume the block's format here.
+ *
  *      |--------------------------------------------------|
  *      |       b | nExceptions | s16encodedExceptionSize  |
  *      |  6 bits |   10 bits   |         16 bits          |
  *      |--------------------------------------------------|
- *      |                s16(exceptions)                   |
- *      |--------------------------------------------------|
  *      |              fixed_b(codewords)                  |
  *      |--------------------------------------------------|
+ *      |                s16(exceptions)                   |
+ *      |--------------------------------------------------|
+ *
  */
 #define PFORDELTA_B             6
 #define PFORDELTA_NEXCEPT       10
@@ -357,7 +359,7 @@ __p4delta_unpack0(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32) {
                 __p4delta_zero32(out);
         }
@@ -368,7 +370,7 @@ __p4delta_unpack1(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 1) {
                 out[0] = in[0] >> 31;
                 out[1] = (in[0] >> 30) & 0x01;
@@ -410,7 +412,7 @@ __p4delta_unpack2(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 2) {
                 out[0] = in[0] >> 30;
                 out[1] = (in[0] >> 28) & 0x03;
@@ -452,7 +454,7 @@ __p4delta_unpack3(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 3) {
                 out[0] = in[0] >> 29;
                 out[1] = (in[0] >> 26) & 0x07;
@@ -496,7 +498,7 @@ __p4delta_unpack4(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 4) {
                 out[0] = in[0] >> 28;
                 out[1] = (in[0] >> 24) & 0x0f;
@@ -538,7 +540,7 @@ __p4delta_unpack5(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 5) {
                 out[0] = in[0] >> 27;
                 out[1] = (in[0] >> 22) & 0x1f;
@@ -584,7 +586,7 @@ __p4delta_unpack6(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 6) {
                 out[0] = in[0] >> 26;
                 out[1] = (in[0] >> 20) & 0x3f;
@@ -630,7 +632,7 @@ __p4delta_unpack7(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 7) {
                 out[0] = in[0] >> 25;
                 out[1] = (in[0] >> 18) & 0x7f;
@@ -678,7 +680,7 @@ __p4delta_unpack8(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 8) {
                 out[0] = in[0] >> 24;
                 out[1] = (in[0] >> 16) & 0xff;
@@ -720,7 +722,7 @@ __p4delta_unpack9(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 9) {
                 out[0] = in[0] >> 23;
                 out[1] = (in[0] >> 14) & 0x01ff;
@@ -770,7 +772,7 @@ __p4delta_unpack10(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 10) {
                 out[0] = in[0] >> 22;
                 out[1] = (in[0] >> 12) & 0x03ff;
@@ -820,7 +822,7 @@ __p4delta_unpack11(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 11) {
                 out[0] = in[0] >> 21;
                 out[1] = (in[0] >> 10) & 0x07ff;
@@ -872,7 +874,7 @@ __p4delta_unpack12(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 12) {
                 out[0] = in[0] >> 20;
                 out[1] = (in[0] >> 8) & 0x0fff;
@@ -922,7 +924,7 @@ __p4delta_unpack13(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 13) {
                 out[0] = in[0] >> 19;
                 out[1] = (in[0] >> 6) & 0x1fff;
@@ -976,7 +978,7 @@ __p4delta_unpack16(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 16) {
                 out[0] = in[0] >> 16;
                 out[1] = in[0] & 0xffff;
@@ -1018,7 +1020,7 @@ __p4delta_unpack20(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5);
+        for (i = 0; i < PFORDELTA_BLOCKSZ;
                         i += 32, out += 32, in += 20) {
                 out[0] = in[0] >> 12;
                 out[1] = (in[0] << 8) & 0x0fffff;
@@ -1076,7 +1078,7 @@ __p4delta_unpack32(uint32_t *out, uint32_t *in)
 {
         uint32_t        i;
 
-        for (i = 0; i < (PFORDELTA_NBLOCK << 5); i += 16, out += 16, in += 16) {
+        for (i = 0; i < PFORDELTA_BLOCKSZ; i += 16, out += 16, in += 16) {
                 __p4delta_copy(in, out);
         }
 }

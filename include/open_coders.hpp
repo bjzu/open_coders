@@ -43,7 +43,8 @@
 
 /* Configure parameters */
 #define MAXLEN          22000000
-#define SKIP            32
+//#define SKIP            32
+#define SKIP            128
 
 /* Magic numbers */
 #define MAGIC_NUM       0x0f823cb3

@@ -50,7 +50,7 @@
 #define D_SIMPLE16      10
 #define D_P4D           11
 #define D_OPTP4DV1      12
-#define D_OPTP4DV1      13
+#define D_OPTP4DV2      13
 #define D_VSEBLOCKS     14
 #define D_VSER          15
 #define D_VSEREST       16
