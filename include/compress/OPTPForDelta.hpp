@@ -1,7 +1,9 @@
 /*-----------------------------------------------------------------------------
- *  OPTPForDeltaV1.hpp - A encoder/decoder for optimized PForDelta.
+ *  OPTPForDelta.cpp - A optimized implementation of PForDelta.
  *      This implementation made by these authors based on a paper below:
  *       - http://dl.acm.org/citation.cfm?id=1526764
+ *      And, some potions fo this code are optimized by means of a code given
+ *      by Shuai Ding, who is of original authors proposing OPTPForDelta.
  *
  *  Coding-Style:
  *      emacs) Mode: C, tab-width: 8, c-basic-offset: 8, indent-tabs-mode: nil
@@ -22,7 +24,7 @@
 #include "compress/PForDelta.hpp"
 #include "io/BitsWriter.hpp"
 
-class OPTPForDeltaV1 {
+class OPTPForDelta {
         public:
                 static uint32_t tryB(uint32_t b, uint32_t *in,
                                 uint32_t len);

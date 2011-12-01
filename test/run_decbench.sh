@@ -19,8 +19,7 @@ N="8 128 2048 131072"
 #       simple9: Simple 9, Simple 9
 #       simple16: Simple 16, Simple 16
 #       p4delta: PForDelta, PForDelta
-#       optp4delta-v1: OPTPForDeltaV1, OPTPForDeltaV1
-#       optp4delta-v2: OPTPForDeltaV2, OPTPForDeltaV2
+#       optp4delta: OPTPForDelta, OPTPForDelta
 #       vseblocks: VSEncodingBlocks, VSEncodingBlocks
 #       vse-r: VSE-R, VSE-R
 #       vserest: VSEncodingRest, VSEncodingRest

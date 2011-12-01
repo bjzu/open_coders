@@ -1,7 +1,9 @@
 /*-----------------------------------------------------------------------------
- *  OPTPForDeltaV1.cpp - A optimized implementation of PForDelta.
+ *  OPTPForDelta.cpp - A optimized implementation of PForDelta.
  *      This implementation made by these authors based on a paper below:
  *       - http://dl.acm.org/citation.cfm?id=1526764
+ *      And, some potions fo this code are optimized by means of a code given
+ *      by Shuai Ding, who is of original authors proposing OPTPForDelta.
  *
  *  Coding-Style:
  *      emacs) Mode: C, tab-width: 8, c-basic-offset: 8, indent-tabs-mode: nil
@@ -14,14 +16,14 @@
  *-----------------------------------------------------------------------------
  */
 
-#include "compress/OPTPForDeltaV1.hpp"
+#include "compress/OPTPForDelta.hpp"
 
 static uint32_t __optp4delta_possLogs[] = {
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 32
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16, 20, 32
 };
 
 uint32_t
-OPTPForDeltaV1::tryB(uint32_t b, uint32_t *in, uint32_t len) 
+OPTPForDelta::tryB(uint32_t b, uint32_t *in, uint32_t len) 
 {
         uint32_t        i;
         uint32_t        size;
@@ -100,7 +102,7 @@ OPTPForDeltaV1::tryB(uint32_t b, uint32_t *in, uint32_t len)
 }
 
 uint32_t
-OPTPForDeltaV1::findBestB(uint32_t *in, uint32_t len)
+OPTPForDelta::findBestB(uint32_t *in, uint32_t len)
 {
         uint32_t        i;
         uint32_t        b;
@@ -111,7 +113,7 @@ OPTPForDeltaV1::findBestB(uint32_t *in, uint32_t len)
 
         for (i = 0, bsize = len;
                         i < __array_size(__optp4delta_possLogs) - 1; i++) {
-                csize = OPTPForDeltaV1::tryB(__optp4delta_possLogs[i], in, len); 
+                csize = OPTPForDelta::tryB(__optp4delta_possLogs[i], in, len); 
 
                 if (csize <= bsize) {
                         b = __optp4delta_possLogs[i];
@@ -123,7 +125,7 @@ OPTPForDeltaV1::findBestB(uint32_t *in, uint32_t len)
 }
 
 void
-OPTPForDeltaV1::encodeArray(uint32_t *in, uint32_t len,
+OPTPForDelta::encodeArray(uint32_t *in, uint32_t len,
                 uint32_t *out, uint32_t &nvalue)
 {
         uint32_t        i;
@@ -139,16 +141,16 @@ OPTPForDeltaV1::encodeArray(uint32_t *in, uint32_t len,
         for (i = 0; i < numBlocks; i++) {
                 if (i != numBlocks - 1) {
                         PForDelta::encodeBlock(in, PFORDELTA_BLOCKSZ,
-                                        out, csize, OPTPForDeltaV1::findBestB); 
+                                        out, csize, OPTPForDelta::findBestB); 
                         in += PFORDELTA_BLOCKSZ; 
                         out += csize;
                 } else {
                         if ((len % PFORDELTA_BLOCKSZ) != 0)
                                 PForDelta::encodeBlock(in, len % PFORDELTA_BLOCKSZ,
-                                                out, csize, OPTPForDeltaV1::findBestB); 
+                                                out, csize, OPTPForDelta::findBestB); 
                         else
                                 PForDelta::encodeBlock(in, PFORDELTA_BLOCKSZ,
-                                                out, csize, OPTPForDeltaV1::findBestB); 
+                                                out, csize, OPTPForDelta::findBestB); 
                 }
 
                 nvalue += csize;
@@ -156,7 +158,7 @@ OPTPForDeltaV1::encodeArray(uint32_t *in, uint32_t len,
 }
 
 void
-OPTPForDeltaV1::decodeArray(uint32_t *in, uint32_t len,
+OPTPForDelta::decodeArray(uint32_t *in, uint32_t len,
                 uint32_t *out, uint32_t nvalue)
 {
         PForDelta::decodeArray(in, len, out, nvalue); 

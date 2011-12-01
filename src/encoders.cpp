@@ -196,14 +196,13 @@ __usage(const char *msg, ...)
         cout << "\t4\tSimple 9" << endl;
         cout << "\t5\tSimple 16" << endl;
         cout << "\t6\tPForDelta" << endl; 
-        cout << "\t7\tOPTPForDelta v1" << endl; 
-        cout << "\t8\tOPTPForDelta v2" << endl; 
-        cout << "\t9\tVSEncodingBlocks" << endl;
-        cout << "\t10\tVSE-R" << endl;
-        cout << "\t11\tVSEncodingRest" << endl;
-        cout << "\t12\tVSEncodingBlocksHybrid" << endl;
-        cout << "\t13\tVSEncodingSimple v1" << endl;
-        cout << "\t14\tVSEncodingSimple v2" << endl << endl;
+        cout << "\t7\tOPTPForDelta" << endl; 
+        cout << "\t8\tVSEncodingBlocks" << endl;
+        cout << "\t9\tVSE-R" << endl;
+        cout << "\t10\tVSEncodingRest" << endl;
+        cout << "\t11\tVSEncodingBlocksHybrid" << endl;
+        cout << "\t12\tVSEncodingSimple v1" << endl;
+        cout << "\t13\tVSEncodingSimple v2" << endl << endl;
 
         exit(1);
 }

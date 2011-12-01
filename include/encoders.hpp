@@ -25,8 +25,7 @@
 #include "compress/Simple9.hpp"
 #include "compress/Simple16.hpp"
 #include "compress/PForDelta.hpp"
-#include "compress/OPTPForDeltaV1.hpp"
-#include "compress/OPTPForDeltaV2.hpp"
+#include "compress/OPTPForDelta.hpp"
 #include "compress/VSEncodingBlocks.hpp"
 #include "compress/VSE-R.hpp"
 #include "compress/VSEncodingRest.hpp"
@@ -34,7 +33,7 @@
 #include "compress/VSEncodingSimpleV1.hpp"
 #include "compress/VSEncodingSimpleV2.hpp"
 
-#define NUMENCODERS     15
+#define NUMENCODERS     14
 
 /* EncoderID */
 #define E_GAMMA         0
@@ -44,14 +43,13 @@
 #define E_SIMPLE9       4
 #define E_SIMPLE16      5
 #define E_P4D           6
-#define E_OPTP4DV1      7
-#define E_OPTP4DV2      8
-#define E_VSEBLOCKS     9
-#define E_VSER          10
-#define E_VSEREST       11
-#define E_VSEHYB        12
-#define E_VSESIMPLEV1   13
-#define E_VSESIMPLEV2   14
+#define E_OPTP4D        7
+#define E_VSEBLOCKS     8
+#define E_VSER          9
+#define E_VSEREST       10
+#define E_VSEHYB        11
+#define E_VSESIMPLEV1   12
+#define E_VSESIMPLEV2   13
 
 typedef void (*pt2Enc)(uint32_t *, uint32_t, uint32_t *, uint32_t &);
 
@@ -63,8 +61,7 @@ pt2Enc encoders[NUMENCODERS] = {
         Simple9::encodeArray,
         Simple16::encodeArray,
         PForDelta::encodeArray,
-        OPTPForDeltaV1::encodeArray,
-        OPTPForDeltaV2::encodeArray,
+        OPTPForDelta::encodeArray,
         VSEncodingBlocks::encodeArray,
         VSE_R::encodeArray,
         VSEncodingRest::encodeArray,
@@ -82,8 +79,7 @@ const char *enc_ext[] = {
         ".Simple9",
         ".Simple16",
         ".P4D",
-        ".OP4DV1",
-        ".OP4DV2",
+        ".OP4D",
         ".VSE",
         ".VSERT",
         ".VSERest",
